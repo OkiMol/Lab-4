@@ -20,18 +20,31 @@
                 var options = new string[]
                 {
                     "0. Выход.",
-                    isPrinted ? "1. Скрыть массив" : "1. Распечатать массив",
+                    isPrinted
+                        ? "1. Скрыть массив" 
+                        : "1. Распечатать массив",
                     "2. Удалить элемент с заданным номером",
                     "3. Добавить N элементов начиная с K-го элемента",
                     "4. Добавить элемент на K-ую позицию",
                     "5. Четные элементы переставить в начало массива, нечетные - в конец",
-                    !isHighlighted ? "6. Показать элементы равные среднему арифметическому элементов массива" : "6. Скрыть элементы равные среднему арифметическому элементов массива",
+                    isHighlighted
+                        ? "6. Скрыть элементы равные среднему арифметическому элементов массива"
+                        : "6. Показать элементы равные среднему арифметическому элементов массива",
                     "7. Отсортировать массив простым включением (сортировка вставками)",
                     "8. Бинарный поиск заданного элемента",
-                    "9. Отсортировать массив сортировкой Шелла",
+                    "9. Отсортировать массив быстрой сортировкой Ломуто",
                     "10. Пересоздать массив"
                 };
-                option = Menu(option, options, $"Длина массива: {arrayLength}\n" + (!isSorted ? "^Массив не отсортирован^\n" : "#Массив отсортирован#\n") + extra, isPrinted ? $"\n{stringArray}\n" : "");
+                option = Menu(option,
+                    options,
+                    $"Длина массива: {arrayLength}\n" +
+                    (!isSorted
+                        ? "^Массив не отсортирован^\n"
+                        : "#Массив отсортирован#\n") +
+                    extra,
+                    isPrinted
+                        ? $"\n{stringArray}\n"
+                        : "");
                 switch (option)
                 {
                     case 0:
@@ -44,10 +57,8 @@
                                 (stringArray, extra) = FindEqualAverage(array);
                             else
                                 stringArray = WriteArray(array);
-                            isPrinted = !isPrinted;
                         }
-                        else
-                            isPrinted = !isPrinted;
+                        isPrinted = !isPrinted;
                         break;
                     case 2:
                         array = DeleteElement(array);
@@ -108,23 +119,25 @@
                     case 8:
                         if (isSorted)
                         {
-                            int elementPosition;
-                            (elementPosition, extra) = BinarySearch(array);
+                            (var elementPosition, extra) = BinarySearch(array);
                             if (elementPosition != -1)
                                 stringArray = WriteArray(array, [elementPosition]);
                             else
+                            {
                                 extra += $"\n^Элемент не найден^";
+                                stringArray = WriteArray(array);
+                            }
                         }
                         else
                             extra = "Отсортируйте массив!";
                         break;
                     case 9:
-                        array = ShellSort(array);
+                        quickSort(array);
                         if (isHighlighted)
                             (stringArray, extra) = FindEqualAverage(array);
                         else
                             stringArray = WriteArray(array);
-                        isSorted = true;
+                        isSorted = IsSorted(array);
                         break;
                     case 10:
                         Console.CursorVisible = true;
@@ -201,9 +214,9 @@
         public static int Menu(int option, string[] options, string highlightedMessage = "", string array = "")
         {
             Console.CursorVisible = false;
-            var work = true;
+            var isRunning = true;
             var length = options.Length;
-            while (work)
+            while (isRunning)
             {
                 Console.Clear();
                 for (var i = 0; i < length; i++)
@@ -250,7 +263,7 @@
                 else if (key.Key == ConsoleKey.DownArrow)
                     option = (option + 1) % length;
                 else if (key.Key == ConsoleKey.Enter)
-                    work = false;
+                    isRunning = false;
                 else
                 {
                     for (var i = 0; i < (length < keys.Length ? length : keys.Length); i++)
@@ -301,8 +314,8 @@
             }
             else
             {
-                for (var i = 0; i < array.Length; i++)
-                    stringArray += $"{array[i]} ";
+                foreach (var num in array)
+                    stringArray += $"{num} ";
             }
             return stringArray;
         }
@@ -320,13 +333,11 @@
 
         public static int[] DeleteElement(int[] array)
         {
-            var edited = new int[array.Length - 1];
             int position;
             bool isRight;
             do
             {
-                Console.WriteLine("Введите номер удаляемого элемента: ");
-                position = Input("");
+                position = Input("Введите номер удаляемого элемента: ");
                 isRight = position > 0 && position <= array.Length;
                 Console.Write(isRight ? "" : "Номер не может быть меньше 1 или больше длины массива\n");
             } while (!isRight);
@@ -338,14 +349,13 @@
                     continue;
                 arrayTemporal[j++] = array[i];
             }
-            array = arrayTemporal;
-            return array;
+            return arrayTemporal;
         }
 
         public static int[] AddElements(int[] array)
         {
             Console.CursorVisible = true;
-            var amount = Input("Введите количество добавляемых элементов: ");
+            var amount = InputLimited("Введите количество добавляемых элементов: ", 1);
             int position;
             bool isRight;
             do
@@ -434,9 +444,9 @@
         public static Tuple<string, string> FindEqualAverage(int[] array)
         {
             var sum = 0.0;
-            for (int i = 0; i < array.Length; i++)
+            foreach (var num in array)
             {
-                sum += array[i];
+                sum += num;
             }
             var average = sum / array.Length;
             var highlights = new int[array.Length];
@@ -484,34 +494,30 @@
             return Tuple.Create(isFound ? (start + end) / 2 : -1, $"Количество сравнений: {count}");
         }
 
-        private static int[][] SplitArray(int[] array, int step)
+        private static int partOfSort(int[] array, int start, int end)
         {
-            int subArrayAmount = (array.Length + step - 1) / step;
-            int[][] newArray = new int[subArrayAmount][];
-
-            for (var i = 0; i < array.Length; i++)
+            var left = start;
+            for (int current = start; current < end; current++)
             {
-                if (i % step == 0)
+                if (array[current] <= array[end])
                 {
-                    int currentStep = Math.Min(step, array.Length - i);
-                    newArray[i / step] = new int[currentStep];
+                    (array[left], array[current]) = (array[current], array[left]);
+                    left++;
                 }
-                newArray[i / step][i % step] = array[i];
             }
-            return newArray;
+            (array[left], array[end]) = (array[end], array[left]);
+            return left;
         }
 
-        public static int[] ShellSort(int[] array)
+        private static void quickSort(int[] array, int start = 0, int end = -1)
         {
-            int[] temporalArray = [];
-            for (var i = 2; i < array.Length; i *= 2)
-            {
-                temporalArray = [];
-                foreach (var subArray in SplitArray(array, i))
-                    temporalArray = temporalArray.Concat(InsertionSort(subArray)).ToArray();
-                array = temporalArray;
-            }
-            return InsertionSort(array);
+            if (end == -1)
+                end = array.Length - 1;
+            if (start >= end)
+                return;
+            int rightStart = partOfSort(array, start, end);
+            quickSort(array, start, rightStart - 1);
+            quickSort(array, rightStart + 1, end);
         }
     }
 }
